@@ -7,8 +7,8 @@ export const APP_CONFIG = {
 
   // PREENCHA para usar o Supabase real. A anon key pode ficar no frontend;
   // a segurança é garantida pelas políticas RLS e RPCs do banco.
-  supabaseUrl: 'https://SEU-PROJETO.supabase.co',
-  supabaseAnonKey: 'SUA_CHAVE_ANON_PUBLICA',
+  supabaseUrl: 'https://ftcauaxmqiskwoktwlrg.supabase.co',
+  supabaseAnonKey: 'sb_publishable_aGsec9HRM8QFWH9noacnKQ_rSdg0jE6',
 
   // true = demonstração comercial sem banco. false = Supabase real.
   // Se URL/chave estiverem com placeholder, o sistema entra em demo automaticamente.
