@@ -2,7 +2,7 @@ export const APP_CONFIG = {
   productName: 'Schwambach | Avaliação dos Caixas',
   productTagline: 'Sua opinião melhora nosso atendimento',
   companyName: 'Supermercado Schwambach',
-  baseDomain: 'SEU-DOMINIO.vercel.app',
+  baseDomain: 'avaliesch.tajodigital.com.br',
   supportEmail: 'joaopaulo@tajodigital.com.br',
 
   // PREENCHA para usar o Supabase real. A anon key pode ficar no frontend;

@@ -1,14 +1,14 @@
 {
-  "name": "tajo-avalia-v1",
-  "version": "1.0.0",
+  "name": "schwambach-avaliacao-premium",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "test:static": "node tests/static_checks.mjs"
   },
-  "devDependencies": {
-    "vite": "^8.0.0"
+  "engines": {
+    "node": ">=20.19.0"
   }
 }

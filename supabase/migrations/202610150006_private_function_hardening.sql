@@ -1,19 +1,38 @@
 -- TAJO Avalie V2 base - 006 Move privileged function bodies out of exposed public schema.
 -- Public functions become SECURITY INVOKER wrappers; privileged bodies live in private.
 
-alter function public.get_my_context() set schema private;
-alter function public.get_public_evaluation_context(text,text) set schema private;
-alter function public.submit_feedback(text,text,integer,text[],text,text) set schema private;
-alter function public.start_shift(uuid,uuid) set schema private;
-alter function public.end_shift(uuid) set schema private;
-alter function public.dashboard_summary(uuid,timestamptz,timestamptz) set schema private;
-alter function public.top_employees(uuid,timestamptz,timestamptz,integer) set schema private;
-alter function public.point_performance(uuid,timestamptz,timestamptz) set schema private;
-alter function public.reason_stats(uuid,timestamptz,timestamptz) set schema private;
-alter function public.hourly_performance(uuid,timestamptz,timestamptz) set schema private;
-alter function public.admin_create_company(text,text,text,text,text,numeric,numeric,integer,integer) set schema private;
-alter function public.add_company_user_by_email(uuid,text,text,uuid) set schema private;
-alter function public.admin_set_subscription(uuid,text,numeric,numeric,integer,date) set schema private;
+-- Instalacao segura em banco parcialmente configurado / execucao repetida.
+-- Se a rotina privada ja existe, NAO a move nem a apaga. A definicao
+-- public.* e recriada abaixo como wrapper SECURITY INVOKER.
+-- Caso nenhum dos dois lados exista, aborta para evitar instalacao incompleta.
+DO $migration_schwambach$
+DECLARE
+  v_signature text;
+BEGIN
+  FOREACH v_signature IN ARRAY ARRAY[
+    'get_my_context()',
+    'get_public_evaluation_context(text,text)',
+    'submit_feedback(text,text,integer,text[],text,text)',
+    'start_shift(uuid,uuid)',
+    'end_shift(uuid)',
+    'dashboard_summary(uuid,timestamptz,timestamptz)',
+    'top_employees(uuid,timestamptz,timestamptz,integer)',
+    'point_performance(uuid,timestamptz,timestamptz)',
+    'reason_stats(uuid,timestamptz,timestamptz)',
+    'hourly_performance(uuid,timestamptz,timestamptz)',
+    'admin_create_company(text,text,text,text,text,numeric,numeric,integer,integer)',
+    'add_company_user_by_email(uuid,text,text,uuid)',
+    'admin_set_subscription(uuid,text,numeric,numeric,integer,date)'
+  ] LOOP
+    IF to_regprocedure('private.' || v_signature) IS NULL THEN
+      IF to_regprocedure('public.' || v_signature) IS NULL THEN
+        RAISE EXCEPTION 'Funcao obrigatoria ausente em ambos os schemas: %', v_signature;
+      END IF;
+      EXECUTE format('ALTER FUNCTION %s SET SCHEMA private', 'public.' || v_signature);
+    END IF;
+  END LOOP;
+END
+$migration_schwambach$;
 
 -- Public wrappers used by PostgREST / supabase.rpc().
 create or replace function public.get_my_context()

@@ -52,10 +52,12 @@ revoke all on public.billing_invoices from anon, authenticated;
 grant select on public.company_contacts to authenticated;
 grant select on public.billing_invoices to authenticated;
 
+drop policy if exists company_contacts_select on public.company_contacts;
 create policy company_contacts_select on public.company_contacts
 for select to authenticated
 using (private.has_company_access(company_id) or private.is_platform_admin());
 
+drop policy if exists billing_invoices_select on public.billing_invoices;
 create policy billing_invoices_select on public.billing_invoices
 for select to authenticated
 using (private.has_company_access(company_id) or private.is_platform_admin());

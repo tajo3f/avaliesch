@@ -1,5 +1,7 @@
--- TAJO AVALIE SaaS V2 - INSTALL_ALL.sql
--- Execute em projeto Supabase NOVO/Vazio, uma única vez.
+-- SCHWAMBACH | Instalador SQL Revisado - 2026-11-03
+-- Para um projeto dedicado ao Schwambach. Crie backup se ja houver dados.
+-- Usa CREATE IF NOT EXISTS, RPCs e policies atualizadas sem excluir tabelas/avaliacoes.
+-- Evite executar SQL total em outro aplicativo com tabelas public compartilhadas.
 
 -- ============================================================
 -- FILE: 202610150001_schema.sql
@@ -397,6 +399,7 @@ drop trigger if exists evaluation_points_enforce_limit on public.evaluation_poin
 create trigger evaluation_points_enforce_limit
 before insert or update of active, company_id on public.evaluation_points
 for each row execute function public.enforce_point_limit();
+
 
 -- ============================================================
 -- FILE: 202610150002_security_rls.sql
@@ -823,6 +826,7 @@ grant select on public.notifications to authenticated;
 grant update(read_at) on public.notifications to authenticated;
 grant select on public.audit_logs to authenticated;
 grant select, insert, update on public.subscriptions to authenticated;
+
 
 -- ============================================================
 -- FILE: 202610150003_rpc_and_reporting.sql
@@ -1475,6 +1479,7 @@ grant execute on function public.point_performance(uuid,timestamptz,timestamptz)
 grant execute on function public.reason_stats(uuid,timestamptz,timestamptz) to authenticated;
 grant execute on function public.hourly_performance(uuid,timestamptz,timestamptz) to authenticated;
 
+
 -- ============================================================
 -- FILE: 202610150004_management_automation.sql
 -- ============================================================
@@ -1787,6 +1792,7 @@ grant execute on function public.admin_create_company(text,text,text,text,text,n
 grant execute on function public.add_company_user_by_email(uuid,text,text,uuid) to authenticated;
 grant execute on function public.admin_set_subscription(uuid,text,numeric,numeric,integer,date) to authenticated;
 
+
 -- ============================================================
 -- FILE: 202610150005_safe_views.sql
 -- ============================================================
@@ -1900,25 +1906,45 @@ grant select on public.v_feedback_details to authenticated;
 grant select on public.v_incident_details to authenticated;
 grant select on public.v_team_members to authenticated;
 
+
 -- ============================================================
 -- FILE: 202610150006_private_function_hardening.sql
 -- ============================================================
 -- TAJO Avalie V2 base - 006 Move privileged function bodies out of exposed public schema.
 -- Public functions become SECURITY INVOKER wrappers; privileged bodies live in private.
 
-alter function public.get_my_context() set schema private;
-alter function public.get_public_evaluation_context(text,text) set schema private;
-alter function public.submit_feedback(text,text,integer,text[],text,text) set schema private;
-alter function public.start_shift(uuid,uuid) set schema private;
-alter function public.end_shift(uuid) set schema private;
-alter function public.dashboard_summary(uuid,timestamptz,timestamptz) set schema private;
-alter function public.top_employees(uuid,timestamptz,timestamptz,integer) set schema private;
-alter function public.point_performance(uuid,timestamptz,timestamptz) set schema private;
-alter function public.reason_stats(uuid,timestamptz,timestamptz) set schema private;
-alter function public.hourly_performance(uuid,timestamptz,timestamptz) set schema private;
-alter function public.admin_create_company(text,text,text,text,text,numeric,numeric,integer,integer) set schema private;
-alter function public.add_company_user_by_email(uuid,text,text,uuid) set schema private;
-alter function public.admin_set_subscription(uuid,text,numeric,numeric,integer,date) set schema private;
+-- Instalacao segura em banco parcialmente configurado / execucao repetida.
+-- Se a rotina privada ja existe, NAO a move nem a apaga. A definicao
+-- public.* e recriada abaixo como wrapper SECURITY INVOKER.
+-- Caso nenhum dos dois lados exista, aborta para evitar instalacao incompleta.
+DO $migration_schwambach$
+DECLARE
+  v_signature text;
+BEGIN
+  FOREACH v_signature IN ARRAY ARRAY[
+    'get_my_context()',
+    'get_public_evaluation_context(text,text)',
+    'submit_feedback(text,text,integer,text[],text,text)',
+    'start_shift(uuid,uuid)',
+    'end_shift(uuid)',
+    'dashboard_summary(uuid,timestamptz,timestamptz)',
+    'top_employees(uuid,timestamptz,timestamptz,integer)',
+    'point_performance(uuid,timestamptz,timestamptz)',
+    'reason_stats(uuid,timestamptz,timestamptz)',
+    'hourly_performance(uuid,timestamptz,timestamptz)',
+    'admin_create_company(text,text,text,text,text,numeric,numeric,integer,integer)',
+    'add_company_user_by_email(uuid,text,text,uuid)',
+    'admin_set_subscription(uuid,text,numeric,numeric,integer,date)'
+  ] LOOP
+    IF to_regprocedure('private.' || v_signature) IS NULL THEN
+      IF to_regprocedure('public.' || v_signature) IS NULL THEN
+        RAISE EXCEPTION 'Funcao obrigatoria ausente em ambos os schemas: %', v_signature;
+      END IF;
+      EXECUTE format('ALTER FUNCTION %s SET SCHEMA private', 'public.' || v_signature);
+    END IF;
+  END LOOP;
+END
+$migration_schwambach$;
 
 -- Public wrappers used by PostgREST / supabase.rpc().
 create or replace function public.get_my_context()
@@ -2169,6 +2195,7 @@ grant execute on function public.admin_set_subscription(uuid,text,numeric,numeri
 alter default privileges in schema public revoke execute on functions from public;
 alter default privileges in schema private revoke execute on functions from public;
 
+
 -- ============================================================
 -- FILE: 202610230007_saas_v2.sql
 -- ============================================================
@@ -2226,10 +2253,12 @@ revoke all on public.billing_invoices from anon, authenticated;
 grant select on public.company_contacts to authenticated;
 grant select on public.billing_invoices to authenticated;
 
+drop policy if exists company_contacts_select on public.company_contacts;
 create policy company_contacts_select on public.company_contacts
 for select to authenticated
 using (private.has_company_access(company_id) or private.is_platform_admin());
 
+drop policy if exists billing_invoices_select on public.billing_invoices;
 create policy billing_invoices_select on public.billing_invoices
 for select to authenticated
 using (private.has_company_access(company_id) or private.is_platform_admin());
@@ -2379,9 +2408,8 @@ grant execute on function public.admin_create_company_v2(text,text,text,text,tex
 grant execute on function public.admin_upsert_invoice(uuid,date,numeric,date,text,timestamptz,text) to authenticated;
 
 
-
 -- ============================================================
--- CONFIGURACAO SCHWAMBACH
+-- FILE: 202611030001_schwambach_setup.sql
 -- ============================================================
 -- SCHWAMBACH | cadastro inicial, sem avaliações ou funcionários fictícios
 -- Ajuste o número de caixas no painel depois da instalação.
@@ -2406,3 +2434,4 @@ on conflict (company_id,slug) do nothing;
 insert into public.evaluation_reasons(company_id,code,label,sort_order)
 values (null,'atendimento','Atendimento',10),(null,'agilidade','Agilidade',20),(null,'educacao','Educação',30),(null,'tempo-espera','Tempo de espera',40),(null,'organizacao','Organização',50),(null,'resolucao','Resolução do problema',60),(null,'outro','Outro',999)
 on conflict do nothing;
+

@@ -23,5 +23,6 @@ export const toast = (message,type='success') => {
 export const copy = async text => { try { await navigator.clipboard.writeText(text); toast('Copiado para a área de transferência.') } catch { toast('Não foi possível copiar.','error') } }
 export const download = (name, text, type='text/plain;charset=utf-8') => { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000) }
 export const csvEscape = v => `"${String(v??'').replaceAll('"','""')}"`
-export const publicUrl = (companySlug, pointSlug) => `${location.origin}/${companySlug}/${pointSlug}`
+export const publicUrl = (companySlug, pointSlug) => `https://avaliesch.tajodigital.com.br/${encodeURIComponent(companySlug)}/${encodeURIComponent(pointSlug)}`
+export const previewUrl = (companySlug, pointSlug) => `/${encodeURIComponent(companySlug)}/${encodeURIComponent(pointSlug)}`
 export const qs = obj => Object.entries(obj).filter(([,v])=>v!==undefined&&v!==null&&v!=='').map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')
