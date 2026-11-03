@@ -1,0 +1,2 @@
+-- Não aplicar seed de demonstração em produção.
+-- O cadastro Schwambach está na última migration.

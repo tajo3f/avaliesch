@@ -1,0 +1,4 @@
+project_id = "tajo-avalie"
+
+[functions.invite-user]
+verify_jwt = true
