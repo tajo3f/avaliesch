@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     if (existing) {
       targetUserId = existing.id
     } else {
-      const redirectTo = `https://avalie.tajodigital.com.br/${company.slug}/painel/login`
+      const redirectTo = `https://avaliesch.tajodigital.com.br/nova-senha`
       const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
         redirectTo,
         data: { full_name: full_name || '' }
@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
 
     if (!targetUserId) throw new Error('USER_CREATE_FAILED')
 
-    await adminClient.from('profiles').upsert({ user_id: targetUserId, full_name: full_name || '', email: String(email).toLowerCase() })
+    const { error: profileError } = await adminClient.from('profiles').upsert({ user_id: targetUserId, full_name: full_name || '', email: String(email).toLowerCase() })
+    if (profileError) throw profileError
     const { error: memberError } = await adminClient.from('company_users').upsert({ company_id, user_id: targetUserId, role, active: true }, { onConflict: 'company_id,user_id' })
     if (memberError) throw memberError
 

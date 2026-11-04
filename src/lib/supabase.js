@@ -38,12 +38,12 @@ export const supabase = {
     const t=await parse(res); t.expires_at=Math.floor(Date.now()/1000)+(t.expires_in||3600); writeToken(t); return t
   },
   async signOut(){ try{await request('/auth/v1/logout',{method:'POST'})}catch{} localStorage.removeItem(TOKEN_KEY) },
-  async recover(email){ return request('/auth/v1/recover',{method:'POST',auth:false,body:{email,redirect_to:`${location.origin}/nova-senha`}}) },
+  async recover(email){ return request(`/auth/v1/recover?redirect_to=${encodeURIComponent(`${location.origin}/nova-senha`)}`,{method:'POST',auth:false,body:{email}}) },
   async updatePassword(password){ return request('/auth/v1/user',{method:'PUT',body:{password}}) },
   rpc(name,args={},publicCall=false){ return request(`/rest/v1/rpc/${name}`,{method:'POST',auth:!publicCall,body:args}) },
   select(table,query=''){ return request(`/rest/v1/${table}${query?`?${query}`:''}`) },
-  insert(table,payload){ return request(`/rest/v1/${table}`,{method:'POST',headers:{Prefer:'return=representation'},body:payload}) },
-  update(table,filter,payload){ return request(`/rest/v1/${table}?${filter}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:payload}) },
+  async insert(table,payload){ const rows=await request(`/rest/v1/${table}`,{method:'POST',headers:{Prefer:'return=representation'},body:payload}); if(!Array.isArray(rows)||rows.length===0)throw new Error('Nenhum registro foi criado. Verifique as permissões da sua conta.');return rows },
+  async update(table,filter,payload){ const rows=await request(`/rest/v1/${table}?${filter}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:payload}); if(!Array.isArray(rows)||rows.length===0)throw new Error('Nenhum registro foi alterado. Confira as permissões e se o cadastro ainda existe.');return rows },
   del(table,filter){ return request(`/rest/v1/${table}?${filter}`,{method:'DELETE',headers:{Prefer:'return=minimal'}}) },
   invoke(functionName,payload){ return request(`/functions/v1/${functionName}`,{method:'POST',body:payload}) }
 }

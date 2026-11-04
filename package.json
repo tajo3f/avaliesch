@@ -1,12 +1,14 @@
 {
   "name": "schwambach-avaliacao-premium",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
-    "test:static": "node tests/static_checks.mjs"
+    "test:static": "node tests/static_checks.mjs",
+    "test:api": "node tests/api_flow.mjs",
+    "test": "npm run build && npm run test:static && npm run test:api"
   },
   "engines": {
     "node": ">=20.19.0"
