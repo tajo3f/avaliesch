@@ -1,5 +1,1 @@
-TAJO AVALIE SaaS
-Version: 2.0.0
-Frontend: Static ES Modules
-Backend: Supabase/PostgreSQL
-Release: 2026-10-23
+Schwambach Avaliação Premium v3.0.0 | UI CSS premium completa | 2026-11-03

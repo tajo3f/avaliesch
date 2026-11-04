@@ -5,14 +5,18 @@ const root = process.cwd()
 const output = join(root, 'dist')
 rmSync(output, {recursive:true,force:true})
 mkdirSync(output, {recursive:true})
-// Incorpora CSS no HTML para evitar páginas sem estilo caso o host
-// redirecione indevidamente requisições de arquivos CSS para index.html.
+// Sincroniza o CSS diretamente no HTML final, para resistir a falhas de
+// roteamento/MIME de arquivos separados na Vercel e em deploy estático.
 const html = readFileSync(join(root,'index.html'),'utf8')
 const css = readFileSync(join(root,'src','styles.css'),'utf8')
 const safeCss = css.replaceAll('</style', '<\\/style')
-const bundled = html.replace('<link rel="stylesheet" href="/src/styles.css" />',
-  `<style id="schwambach-core-styles">\n${safeCss}\n</style>`)
-if (bundled === html) throw Error('Não foi possível incorporar o CSS.')
+const styleBlock = `<style id="schwambach-core-styles">\n${safeCss}\n</style>`
+let bundled
+if(/<style id="schwambach-core-styles">[\s\S]*?<\/style>/.test(html)) {
+  bundled = html.replace(/<style id="schwambach-core-styles">[\s\S]*?<\/style>/, styleBlock)
+} else if (html.includes('<link rel="stylesheet" href="/src/styles.css" />')) {
+  bundled = html.replace('<link rel="stylesheet" href="/src/styles.css" />', styleBlock)
+} else throw Error('Sem ponto de incorporação do CSS no HTML')
 writeFileSync(join(output,'index.html'), bundled)
 cpSync(join(root,'src'), join(output,'src'), {recursive:true})
 cpSync(join(root,'public'), output, {recursive:true})
