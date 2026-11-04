@@ -7,7 +7,7 @@ const app=$('#app')
 const state={public:{key:'',step:1,rating:null,reasons:[],comment:'',ctx:null},adminCompanies:null,period:30}
 
 const route=()=>location.pathname.replace(/\/+$/,'')||'/'
-function go(path){history.pushState({},'',path);window.scrollTo({top:0,behavior:'auto'});render()}
+function go(path){closeModal();history.pushState({},'',path);window.scrollTo({top:0,behavior:'auto'});render()}
 function isAdminSession(){return api.uiSession()?.isPlatformAdmin===true}
 function roleLabel(r){return r==='owner'?'Proprietário':r==='manager'?'Gerente':r==='platform_admin'?'Admin TAJO':'Usuário'}
 function statusBadge(status){const map={active:['Ativo','green'],pending:['Pendente','amber'],suspended:['Suspenso','red'],cancelled:['Cancelado','red'],new:['Nova','red'],analyzing:['Em análise','amber'],resolved:['Resolvida','green'],archived:['Arquivada',''],trial:['Teste','blue'],past_due:['Em atraso','red'],open:['Em aberto','amber'],paid:['Pago','green'],overdue:['Vencida','red']};const x=map[status]||[status||'—',''];return badge(x[0],x[1])}
@@ -21,8 +21,30 @@ function activeShift(d,pointId){return d.shifts?.find(s=>s.point_id===pointId&&s
 function employee(d,id){return d.employees?.find(e=>e.id===id)}
 function point(d,id){return d.points?.find(p=>p.id===id)}
 function reasonLabel(code){return ({'tempo-espera':'Tempo de espera',educacao:'Educação',agilidade:'Agilidade',atendimento:'Atendimento',organizacao:'Organização',resolucao:'Resolução',outro:'Outro'})[code]||code}
-function modal(title,body,footer='',wide=false){return `<div class="modal-back" data-modal-back><section class="modal ${wide?'wide':''}"><header class="modal-head"><h2>${esc(title)}</h2><button class="close" data-close-modal>×</button></header><div class="modal-body">${body}</div>${footer?`<footer class="modal-foot">${footer}</footer>`:''}</section></div>`}
-function openModal(html){document.body.insertAdjacentHTML('beforeend',html);$$('[data-close-modal], [data-modal-back]').forEach(el=>el.addEventListener('click',e=>{if(e.currentTarget===e.target||e.currentTarget.hasAttribute('data-close-modal'))$('.modal-back')?.remove()}));$('.modal')?.addEventListener('click',e=>e.stopPropagation())}
+function modal(title,body,footer='',wide=false){return `<div class="modal-back" data-modal-back><section role="dialog" aria-modal="true" aria-labelledby="active-modal-title" class="modal ${wide?'wide':''}"><header class="modal-head"><h2 id="active-modal-title">${esc(title)}</h2><button type="button" class="close" data-close-modal aria-label="Fechar janela">×</button></header><div class="modal-body">${body}</div>${footer?`<footer class="modal-foot">${footer}</footer>`:''}</section></div>`}
+let modalPreviousFocus=null
+function closeModal(){
+  document.querySelector('.modal-back')?.remove()
+  document.body.classList.remove('modal-open')
+  if(modalPreviousFocus?.isConnected) modalPreviousFocus.focus({preventScroll:true})
+  modalPreviousFocus=null
+}
+// IMPORTANTE: todos os botões chamam openModal(titulo, corpo, rodape, largura).
+// A implementação anterior recebia apenas uma string e imprimia o título cru
+// no fim do body. Agora montamos a janela real para cada operação.
+function openModal(title,body='',footer='',wide=false){
+  closeModal()
+  modalPreviousFocus=document.activeElement
+  document.body.insertAdjacentHTML('beforeend',modal(title,body,footer,wide))
+  const overlay=document.querySelector('.modal-back')
+  document.body.classList.add('modal-open')
+  overlay.addEventListener('click',e=>{
+    if(e.target===overlay||e.target.closest('[data-close-modal]'))closeModal()
+  })
+  const first=overlay.querySelector('input:not([readonly]):not([disabled]),select:not([disabled]),textarea:not([readonly]),[data-close-modal]')
+  first?.focus({preventScroll:true})
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.modal-back'))closeModal()})
 
 
 function lineChart(rows=[]){
@@ -237,5 +259,5 @@ async function backgroundRefresh(){
 setInterval(backgroundRefresh,30000)
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)backgroundRefresh()})
 window.addEventListener('focus',backgroundRefresh)
-window.addEventListener('popstate',()=>render())
+window.addEventListener('popstate',()=>{closeModal();render()})
 render()

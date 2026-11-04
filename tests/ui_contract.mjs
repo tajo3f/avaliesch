@@ -26,3 +26,8 @@ assert.ok(sql.includes('private.has_company_access'))
 assert.ok(edge.includes('https://avaliesch.tajodigital.com.br/nova-senha'))
 assert.ok(css.includes('.sidebar-scroll') && css.includes('.sidebar-brandtop'))
 console.log('\n15 contratos de interface e 6 invariantes verificados.')
+
+assert.ok(main.includes('function openModal(title,body='),'Modal precisa receber título, corpo e rodapé');
+assert.ok(main.includes("insertAdjacentHTML('beforeend',modal(title,body,footer,wide))"),'Renderização de janela real obrigatória');
+assert.ok(main.includes('role=\"dialog\"'),'Diálogo acessível obrigatório');
+console.log('OK Contrato do motor de modais da V4.1');
