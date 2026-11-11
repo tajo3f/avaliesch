@@ -1,3 +1,5 @@
+> **Atualização 11/11/2026 — V4.3:** foi adicionada a trava de uma avaliação por navegador para todo o Supermercado Schwambach. Leia `LEIA_PRIMEIRO_V4_3_ANTIFRAUDE.md` e execute a migration incremental ANTES de publicar a nova interface.
+
 # Supermercado Schwambach — Avaliação de Atendimento v4
 
 Sistema proprietário de atendimento e feedback. Projeto estático com JavaScript moderno + Supabase, otimizado para Vercel, com 12 QR Codes individuais e gestão de funcionários e turnos.

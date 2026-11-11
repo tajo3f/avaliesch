@@ -1,6 +1,6 @@
 {
   "name": "schwambach-avaliacao-premium",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,8 @@
     "test:static": "node tests/static_checks.mjs",
     "test:api": "node tests/api_flow.mjs",
     "test:ui": "node tests/ui_contract.mjs",
-    "test": "npm run build && npm run test:static && npm run test:api && npm run test:ui"
+    "test": "npm run build && npm run test:static && npm run test:api && npm run test:ui && npm run test:antifraud",
+    "test:antifraud": "node tests/antifraud_flow.mjs"
   },
   "engines": {
     "node": ">=20.19.0"

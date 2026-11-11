@@ -8,6 +8,23 @@ let realCache=null
 let lastLoadedAt=0
 const CACHE_TTL_MS=15000
 
+// Uma resposta por navegador e por estabelecimento (NÃO é identificação pessoal).
+// O Supabase aplica a trava definitiva; o estado local só melhora a experiência.
+const REVIEW_LOCK_PREFIX='schwambach-feedback-completed-v1:'
+const REVIEW_NONCE_KEY='tajo-evaluation-nonce-v2' // preservar identificadores dos clientes anteriores
+let feedbackPending=false
+function reviewLock(companySlug){
+  try { return JSON.parse(localStorage.getItem(REVIEW_LOCK_PREFIX+companySlug)||'null') } catch { return null }
+}
+function rememberReview(companySlug,pointSlug){
+  localStorage.setItem(REVIEW_LOCK_PREFIX+companySlug,JSON.stringify({pointSlug,completedAt:new Date().toISOString()}))
+}
+function stableReviewNonce(){
+  let nonce=localStorage.getItem(REVIEW_NONCE_KEY)
+  if(!nonce){nonce=crypto.randomUUID();localStorage.setItem(REVIEW_NONCE_KEY,nonce)}
+  return nonce
+}
+
 const getUi=()=>{try{return JSON.parse(localStorage.getItem(UI_SESSION)||'null')}catch{return null}}
 const setUi=s=>localStorage.setItem(UI_SESSION,JSON.stringify(s))
 
@@ -79,10 +96,25 @@ export const api={
   async signOut(){ localStorage.removeItem(UI_SESSION); realCache=null;lastLoadedAt=0; if(!isDemoMode()) await supabase.signOut() },
   async recover(email){ if(isDemoMode()) return true; return supabase.recover(email) },
   async publicContext(companySlug,pointSlug){ return isDemoMode()?demoPublicContext(companySlug,pointSlug):supabase.rpc('get_public_evaluation_context',{p_company_slug:companySlug,p_point_slug:pointSlug},true) },
+  reviewLock,
   async submitFeedback({companySlug,pointSlug,rating,reasons,comment}){
     if(isDemoMode()) return {feedback_id:`demo-${Date.now()}`,received_at:new Date().toISOString()}
-    let nonce=localStorage.getItem('tajo-evaluation-nonce-v2'); if(!nonce){nonce=crypto.randomUUID();localStorage.setItem('tajo-evaluation-nonce-v2',nonce)}
-    return supabase.rpc('submit_feedback',{p_company_slug:companySlug,p_point_slug:pointSlug,p_rating:rating,p_reason_codes:reasons,p_comment:comment||null,p_client_nonce:nonce},true)
+    if(reviewLock(companySlug)) throw new Error('ALREADY_REVIEWED_COMPANY')
+    if(feedbackPending) throw new Error('SUBMISSION_IN_PROGRESS')
+    feedbackPending=true
+    try {
+      const nonce=stableReviewNonce()
+      const result=await supabase.rpc('submit_feedback',{
+        p_company_slug:companySlug,p_point_slug:pointSlug,p_rating:rating,
+        p_reason_codes:reasons,p_comment:comment||null,p_client_nonce:nonce
+      },true)
+      rememberReview(companySlug,pointSlug)
+      return result
+    } catch(err){
+      // Se o banco já conhece o token, manter o bloqueio local após a resposta.
+      if(err.message?.includes('ALREADY_REVIEWED_COMPANY') || err.message==='RATE_LIMITED') rememberReview(companySlug,pointSlug)
+      throw err
+    } finally { feedbackPending=false }
   },
   async companyData(force=false){ if(isDemoMode()) return structuredClone(demoData); const s=getUi(); if(!s?.companyId) throw new Error('Sessão sem empresa vinculada.'); if(realCache&&!force&&Date.now()-lastLoadedAt<CACHE_TTL_MS)return realCache; return getCompanyData(s.companyId) },
   async refresh(){ return this.companyData(true) },
