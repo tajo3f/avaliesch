@@ -399,3 +399,13 @@ body.modal-open{overflow:hidden}
  .home-topbrand{gap:8px}
 }
 @media(prefers-reduced-motion:reduce){.sidebar .side-logo img,.experience-logo img{transition:none}}
+
+/* Perfis operacionais V4.6: fiscais consultam dados e tratam feedback, sem alterar estrutura. */
+.app-shell[data-access-role="fiscal"] [data-new-point],
+.app-shell[data-access-role="fiscal"] [data-new-employee],
+.app-shell[data-access-role="fiscal"] [data-edit-point],
+.app-shell[data-access-role="fiscal"] [data-edit-employee],
+.app-shell[data-access-role="fiscal"] [data-new-shift],
+.app-shell[data-access-role="fiscal"] [data-end-shift],
+.app-shell[data-access-role="fiscal"] [data-start-shift],
+.app-shell[data-access-role="fiscal"] [data-invite-user] {display:none!important}

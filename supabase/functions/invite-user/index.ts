@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json()
     const { company_id, email, full_name, role = 'manager' } = body
-    if (!company_id || !email || !['owner','manager'].includes(role)) throw new Error('INVALID_PAYLOAD')
+    if (!company_id || !email || !['owner','manager','fiscal'].includes(role)) throw new Error('INVALID_PAYLOAD')
 
     const { data: platformAdmin } = await adminClient.from('platform_admins').select('user_id').eq('user_id', user.id).maybeSingle()
     const { data: membership } = await adminClient.from('company_users').select('role,active').eq('company_id', company_id).eq('user_id', user.id).maybeSingle()
