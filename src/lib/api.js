@@ -8,9 +8,9 @@ let realCache=null
 let lastLoadedAt=0
 const CACHE_TTL_MS=15000
 
-// Uma avaliação por ponto/navegador a cada 15 dias. O backend é a autoridade.
+// Uma avaliação por ponto/navegador a cada 24 horas. O backend é a autoridade.
 // Mantemos o nonce antigo para preservar o histórico da proteção anterior.
-export const REVIEW_COOLDOWN_MS = 15 * 24 * 60 * 60 * 1000
+export const REVIEW_COOLDOWN_MS = 24 * 60 * 60 * 1000
 const REVIEW_LOCK_PREFIX='schwambach-feedback-point-v2:'
 const LEGACY_COMPANY_LOCK_PREFIX='schwambach-feedback-completed-v1:'
 const REVIEW_NONCE_KEY='tajo-evaluation-nonce-v2'
@@ -20,7 +20,7 @@ function reviewLock(companySlug,pointSlug){
   if(!companySlug || !pointSlug)return null
   const stored=readJson(REVIEW_LOCK_PREFIX+companySlug+':'+pointSlug)
   const legacy=readJson(LEGACY_COMPANY_LOCK_PREFIX+companySlug)
-  // Uma avaliação registrada na V4.3 bloqueia só o caixa original, por 15 dias.
+  // Uma avaliação registrada na V4.3 bloqueia só o caixa original, por 24 horas.
   const records=[stored,legacy?.pointSlug===pointSlug?legacy:null].filter(Boolean)
   const latest=records.map(r=>({completedAt:r.completedAt,ms:Date.parse(r.completedAt)}))
     .filter(r=>Number.isFinite(r.ms)&&r.ms<=Date.now()+60000)
@@ -30,7 +30,7 @@ function reviewLock(companySlug,pointSlug){
 }
 function rememberReview(companySlug,pointSlug,completedAt=new Date().toISOString()){
   // Só registrar a data depois de confirmação real de envio; erro do banco
-  // não pode reiniciar artificialmente o prazo de 15 dias.
+  // não pode reiniciar artificialmente o prazo de 24 horas.
   const time=Date.parse(completedAt)
   if(!Number.isFinite(time))return
   localStorage.setItem(REVIEW_LOCK_PREFIX+companySlug+':'+pointSlug,JSON.stringify({pointSlug,completedAt:new Date(time).toISOString()}))
@@ -73,7 +73,7 @@ async function getCompanyData(companyId){
     supabase.select('shifts',`select=*&company_id=eq.${companyId}&order=started_at.desc&limit=150`),
     supabase.select('v_team_members',`select=*&company_id=eq.${companyId}&order=created_at.asc`),
     supabase.rpc('dashboard_summary',{p_company_id:companyId,p_from:fromIso,p_to:toIso}),
-    supabase.rpc('top_employees',{p_company_id:companyId,p_from:fromIso,p_to:toIso,p_min_reviews:1}),
+    supabase.rpc('top_employees',{p_company_id:companyId,p_from:fromIso,p_to:toIso,p_min_reviews:5}),
     supabase.rpc('point_performance',{p_company_id:companyId,p_from:fromIso,p_to:toIso}),
     supabase.rpc('reason_stats',{p_company_id:companyId,p_from:fromIso,p_to:toIso}),
     supabase.rpc('hourly_performance',{p_company_id:companyId,p_from:fromIso,p_to:toIso})
@@ -128,7 +128,7 @@ export const api={
       return result
     } catch(err){
       // O banco pode recusar o envio sem fornecer a data original.
-      // Não criar outro prazo de 15 dias por uma falha de envio.
+      // Não criar outro prazo de 24 horas por uma falha de envio.
       throw err
     } finally { feedbackPending=false }
   },

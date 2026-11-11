@@ -27,7 +27,7 @@ let passed=0
 const check=(title,test)=>{test();console.log(`OK ${String(++passed).padStart(2,'0')} ${title}`)}
 const s=(company='supermercado-schwambach',point='caixa-01')=>({companySlug:company,pointSlug:point,rating:1,reasons:['atendimento'],comment:'teste'})
 const company='supermercado-schwambach'
-check('Prazo definido de 15 dias',()=>assert.equal(REVIEW_COOLDOWN_MS,1296000000))
+check('Prazo definido de 24 horas',()=>assert.equal(REVIEW_COOLDOWN_MS,86400000))
 check('Novo navegador está livre',()=>assert.equal(api.reviewLock(company,'caixa-01'),null))
 await api.submitFeedback(s())
 check('Primeira avaliação aprovada',()=>assert.equal(requests.length,1))
@@ -52,14 +52,18 @@ store.set('schwambach-feedback-completed-v1:'+company,JSON.stringify({pointSlug:
 check('Trava V4.3 migra apenas para o caixa original',()=>{assert.ok(api.reviewLock(company,'caixa-09'));assert.equal(api.reviewLock(company,'caixa-10'),null)})
 await api.submitFeedback(s(company,'caixa-10'))
 check('Legado global não impede avaliação de outro caixa',()=>assert.equal(requests.length,5))
-// Simula exatos 15 dias: servidor e navegador expiram no mesmo instante.
+// 23h59: bloqueio ainda vigente; 24h completas: libera sem esperar meia-noite.
+const almostExpired=Date.now()-REVIEW_COOLDOWN_MS+60_000
+store.set(localKey,JSON.stringify({pointSlug:'caixa-01',completedAt:new Date(almostExpired).toISOString()}))
+check('23h59 apos o envio: mesmo caixa ainda bloqueado',()=>assert.ok(api.reviewLock(company,'caixa-01')))
+// Simula exatas 24 horas: servidor e navegador expiram no mesmo instante.
 const lastAt=Date.now()-REVIEW_COOLDOWN_MS-3000
 store.set(localKey,JSON.stringify({pointSlug:'caixa-01',completedAt:new Date(lastAt).toISOString()}))
 const token=store.get('tajo-evaluation-nonce-v2')
 database.set(`${company}/caixa-01/${token}`,lastAt)
-check('Bloqueio expira depois de 15 dias',()=>assert.equal(api.reviewLock(company,'caixa-01'),null))
+check('Bloqueio expira depois de 24 horas',()=>assert.equal(api.reviewLock(company,'caixa-01'),null))
 await api.submitFeedback(s())
-check('Mesmo caixa permite nova avaliação após 15 dias',()=>assert.equal(requests.length,6))
+check('Mesmo caixa permite nova avaliação após 24 horas',()=>assert.equal(requests.length,6))
 check('Após nova avaliação, inicia novo período',()=>assert.ok(api.reviewLock(company,'caixa-01')))
 // Se não foi enviado, a falha não pode criar trava.
 failNext=true
@@ -77,12 +81,25 @@ const [c,d]=await Promise.allSettled([
   apiOtherTab.submitFeedback(s('empresa-entre-caixas','caixa-02'))
 ])
 check('Duas abas em caixas diferentes: ambos permitidos',()=>assert.deepEqual([c.status,d.status],['fulfilled','fulfilled']))
-const migration=readFileSync('supabase/migrations/202611110002_per_point_15day_cooldown.sql','utf8')
-check('Chave do bloqueio inclui empresa, caixa e navegador',()=>assert.match(migration,/primary key \(company_id, point_id, client_nonce_hash\)/i))
+const migration=readFileSync('supabase/migrations/202611110003_24h_per_point_and_negative_spike.sql','utf8')
+check('Chave do bloqueio inclui empresa, caixa e navegador',()=>assert.match(readFileSync('supabase/migrations/202611110002_per_point_15day_cooldown.sql','utf8'),/primary key \(company_id, point_id, client_nonce_hash\)/i))
 check('Migração desliga o gatilho global anterior',()=>assert.match(migration,/drop trigger if exists feedbacks_one_review_per_browser on public.feedbacks/i))
-check('Migração importa o histórico pela última avaliação por ponto',()=>assert.match(migration,/max\(f.created_at\)/i))
+check('Migration preserva data original e nao reinicializa bloqueios',()=>assert.doesNotMatch(migration,/max\(f\.created_at\)/i))
 check('Não apaga avaliações nem a tabela antiga',()=>{assert.doesNotMatch(migration,/\bdelete\s+from\s+public\.feedbacks\b|truncate\s+table\s+public\.feedbacks/i);assert.doesNotMatch(migration,/drop table/i)})
-check('15 dias aplicados de forma atômica pelo banco',()=>assert.match(migration,/where lock_row.last_feedback_at <= excluded.last_feedback_at - interval '15 days'/i))
+check('24 horas aplicadas de forma atômica pelo banco',()=>assert.match(migration,/where lock_row.last_feedback_at <= excluded.last_feedback_at - interval '24 hours'/i))
 check('Trigger aplicado ANTES da inserção',()=>assert.match(migration,/before insert on public.feedbacks/i))
 check('Tabela de proteção não exposta a usuários anônimos',()=>assert.match(migration,/revoke all on table private.feedback_point_cooldowns from public, anon, authenticated/i))
 console.log(`\n${passed} testes antifraude simulados aprovados; nenhuma conexão real ao Supabase foi feita.`)
+
+// Contratos adicionais da V4.5: alertas operacionais e ranking justo.
+const main=readFileSync('src/main.js','utf8')
+const apiText=readFileSync('src/lib/api.js','utf8')
+check('Migration exige instalação prévia da V4.4',()=>assert.match(migration,/V4_4_REQUIRED/))
+check('Alerta somente com 5 ou mais avaliações negativas',()=>assert.match(migration,/v_negative_count < 5/))
+check('Alerta exige pelo menos 60% de notas negativas',()=>assert.match(migration,/v_negative_count::numeric \/ nullif\(v_total_count, 0\) < 0\.60/))
+check('Evita duplicar alerta operacional no mesmo dia',()=>assert.match(migration,/i\.incident_type = 'negative_daily_spike'[\s\S]*?interval '24 hours'/))
+check('Não classifica fraude automaticamente',()=>assert.match(migration,/n[aã]o comprova fraude/i))
+check('Ranking só qualifica funcionários com 5 avaliações',()=>assert.match(apiText,/p_min_reviews:5/))
+check('Tela explica amostra mínima do ranking',()=>assert.match(main,/Mínimo de 5 avaliações/))
+check('Tela explica prazo de 24 horas',()=>assert.match(main,/24 horas completas/))
+check('Trava antiga de 15 dias removida',()=>assert.match(migration,/drop trigger if exists feedbacks_point_cooldown_15d/))
