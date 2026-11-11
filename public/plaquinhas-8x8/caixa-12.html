@@ -1,0 +1,25 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Schwambach • Plaquinha 8 × 8 cm • Caixa 12</title>
+<style>
+@page{size:80mm 80mm;margin:0}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{background:#edf4fa;font-family:Arial,Helvetica,sans-serif;color:#08385b}
+.print-btn{position:absolute;top:10px;right:10px;border:0;border-radius:10px;background:#09649a;color:white;padding:10px 14px;font-weight:bold;cursor:pointer}
+.card{width:80mm;height:80mm;margin:20px auto;background:#fff;border:1px solid #d7e6f1;outline:2px solid transparent;display:flex;flex-direction:column;align-items:center;text-align:center;overflow:hidden;position:relative;padding:2mm 4mm 2mm}
+.card:before{content:"";position:absolute;top:0;left:0;right:0;height:1.5mm;background:linear-gradient(90deg,#08639f 0 72%,#d51928 72%)}
+.logo{width:23mm;height:23mm;object-fit:contain;background:transparent;filter:drop-shadow(0 2mm 2mm rgba(6,52,89,.17));margin-top:0.8mm;flex:none}
+h1{font-size:11.5pt;margin:0;line-height:1.08;letter-spacing:-.5px;color:#06395e;font-weight:900}
+.subtitle{font-size:6.6pt;color:#637a8d;margin:1mm 0 1.5mm}
+.scan{display:flex;align-items:center;gap:3mm;flex:1;justify-content:center;min-height:0;width:100%}
+.qr{width:30mm;height:30mm;object-fit:contain;background:white;border:1px solid #deebf3;border-radius:2mm;padding:1mm}
+.steps{text-align:left;flex:1;min-width:0}
+.steps strong{display:block;font-size:7.2pt;line-height:1.2;color:#074a75}
+.steps span{display:block;font-size:6.3pt;line-height:1.35;color:#698196;margin-top:1.4mm}
+.nfc{padding:1.2mm 2mm 0.5mm;border-top:1px solid #dceaf1;width:100%;display:flex;align-items:center;justify-content:center;gap:1mm;font-size:7.2pt;font-weight:800;color:#b91c2e}
+.nfc b{font-size:12pt;line-height:1}
+.footer{font-size:6.2pt;color:#476d87;font-weight:800;letter-spacing:.09em;margin-top:.6mm}
+@media print{body{background:white}.card{margin:0;box-shadow:none;border:0}.print-btn{display:none}}
+</style></head><body><button class="print-btn" onclick="window.print()">Imprimir 8 × 8 cm</button>
+<main class="card"><img class="logo" src="/schwambach-avaliacao-logo.png" alt="Sistema de Avaliação Schwambach"><h1>AVALIE NOSSO<br>ATENDIMENTO</h1><p class="subtitle">Sua opinião faz a diferença.</p>
+<div class="scan"><img class="qr" src="/qrcodes/caixa-12.svg" alt="QR Code Caixa 12"><div class="steps"><strong>CAIXA 12</strong><span>Aponte a câmera para o código e avalie.</span></div></div>
+<div class="nfc"><b>◖))</b><span>OU APROXIME SEU CELULAR*</span></div><div class="footer">SUPERMERCADO SCHWAMBACH</div></main></body></html>

@@ -19,7 +19,7 @@ export const APP_CONFIG = {
   setupPrice: 390,
   monthlyPrice: 390,
   pointLimit: 12,
-  logoPath: '/schwambach-logo.png'
+  logoPath: '/schwambach-avaliacao-logo.png'
 }
 
 export function isDemoMode() {

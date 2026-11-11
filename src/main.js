@@ -144,7 +144,7 @@ function adminBilling(companies){const d={company:{name:'TAJO Digital'}},mrr=com
 let renderVersion=0
 async function render({silent=false}={}){
   const version=++renderVersion
-  const r=route(),parts=pathParts(); if(!silent)app.innerHTML='<div class="boot"><img src="/schwambach-logo.png"><span>Carregando…</span></div>'
+  const r=route(),parts=pathParts(); if(!silent)app.innerHTML='<div class="boot"><img src="/schwambach-avaliacao-logo.png"><span>Carregando…</span></div>'
   try{
     if(r==='/'){app.innerHTML=landing();bind();return}
     if(r==='/nova-senha'){app.innerHTML=passwordPage();bind();return}
