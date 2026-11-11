@@ -1,3 +1,7 @@
+# ATUALIZAÇÃO V4.4 — 15 DIAS POR CAIXA
+
+Antes de publicar, leia **LEIA_PRIMEIRO_V4_4_15_DIAS_POR_CAIXA.md**. Esta versão modifica o bloqueio antifraude da V4.3 para um período de 15 dias por ponto, com migration incremental obrigatória no Supabase.
+
 > **Atualização 11/11/2026 — V4.3:** foi adicionada a trava de uma avaliação por navegador para todo o Supermercado Schwambach. Leia `LEIA_PRIMEIRO_V4_3_ANTIFRAUDE.md` e execute a migration incremental ANTES de publicar a nova interface.
 
 # Supermercado Schwambach — Avaliação de Atendimento v4

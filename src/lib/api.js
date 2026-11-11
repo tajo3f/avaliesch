@@ -8,16 +8,32 @@ let realCache=null
 let lastLoadedAt=0
 const CACHE_TTL_MS=15000
 
-// Uma resposta por navegador e por estabelecimento (NÃO é identificação pessoal).
-// O Supabase aplica a trava definitiva; o estado local só melhora a experiência.
-const REVIEW_LOCK_PREFIX='schwambach-feedback-completed-v1:'
-const REVIEW_NONCE_KEY='tajo-evaluation-nonce-v2' // preservar identificadores dos clientes anteriores
+// Uma avaliação por ponto/navegador a cada 15 dias. O backend é a autoridade.
+// Mantemos o nonce antigo para preservar o histórico da proteção anterior.
+export const REVIEW_COOLDOWN_MS = 15 * 24 * 60 * 60 * 1000
+const REVIEW_LOCK_PREFIX='schwambach-feedback-point-v2:'
+const LEGACY_COMPANY_LOCK_PREFIX='schwambach-feedback-completed-v1:'
+const REVIEW_NONCE_KEY='tajo-evaluation-nonce-v2'
 let feedbackPending=false
-function reviewLock(companySlug){
-  try { return JSON.parse(localStorage.getItem(REVIEW_LOCK_PREFIX+companySlug)||'null') } catch { return null }
+function readJson(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}}
+function reviewLock(companySlug,pointSlug){
+  if(!companySlug || !pointSlug)return null
+  const stored=readJson(REVIEW_LOCK_PREFIX+companySlug+':'+pointSlug)
+  const legacy=readJson(LEGACY_COMPANY_LOCK_PREFIX+companySlug)
+  // Uma avaliação registrada na V4.3 bloqueia só o caixa original, por 15 dias.
+  const records=[stored,legacy?.pointSlug===pointSlug?legacy:null].filter(Boolean)
+  const latest=records.map(r=>({completedAt:r.completedAt,ms:Date.parse(r.completedAt)}))
+    .filter(r=>Number.isFinite(r.ms)&&r.ms<=Date.now()+60000)
+    .sort((a,b)=>b.ms-a.ms)[0]
+  if(!latest || Date.now()>=latest.ms+REVIEW_COOLDOWN_MS)return null
+  return {pointSlug,completedAt:latest.completedAt,nextAllowedAt:new Date(latest.ms+REVIEW_COOLDOWN_MS).toISOString()}
 }
-function rememberReview(companySlug,pointSlug){
-  localStorage.setItem(REVIEW_LOCK_PREFIX+companySlug,JSON.stringify({pointSlug,completedAt:new Date().toISOString()}))
+function rememberReview(companySlug,pointSlug,completedAt=new Date().toISOString()){
+  // Só registrar a data depois de confirmação real de envio; erro do banco
+  // não pode reiniciar artificialmente o prazo de 15 dias.
+  const time=Date.parse(completedAt)
+  if(!Number.isFinite(time))return
+  localStorage.setItem(REVIEW_LOCK_PREFIX+companySlug+':'+pointSlug,JSON.stringify({pointSlug,completedAt:new Date(time).toISOString()}))
 }
 function stableReviewNonce(){
   let nonce=localStorage.getItem(REVIEW_NONCE_KEY)
@@ -99,7 +115,7 @@ export const api={
   reviewLock,
   async submitFeedback({companySlug,pointSlug,rating,reasons,comment}){
     if(isDemoMode()) return {feedback_id:`demo-${Date.now()}`,received_at:new Date().toISOString()}
-    if(reviewLock(companySlug)) throw new Error('ALREADY_REVIEWED_COMPANY')
+    if(reviewLock(companySlug,pointSlug)) throw new Error('POINT_REVIEW_COOLDOWN')
     if(feedbackPending) throw new Error('SUBMISSION_IN_PROGRESS')
     feedbackPending=true
     try {
@@ -108,11 +124,11 @@ export const api={
         p_company_slug:companySlug,p_point_slug:pointSlug,p_rating:rating,
         p_reason_codes:reasons,p_comment:comment||null,p_client_nonce:nonce
       },true)
-      rememberReview(companySlug,pointSlug)
+      rememberReview(companySlug,pointSlug,result?.received_at||new Date().toISOString())
       return result
     } catch(err){
-      // Se o banco já conhece o token, manter o bloqueio local após a resposta.
-      if(err.message?.includes('ALREADY_REVIEWED_COMPANY') || err.message==='RATE_LIMITED') rememberReview(companySlug,pointSlug)
+      // O banco pode recusar o envio sem fornecer a data original.
+      // Não criar outro prazo de 15 dias por uma falha de envio.
       throw err
     } finally { feedbackPending=false }
   },
